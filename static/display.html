@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>同声传译 — CMPak</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="display-page">
+
+  <!-- Top bar: welcome banner (left) + logo (right) -->
+  <header class="top-bar">
+    <div class="banner-area">
+      <div class="dept-label" id="deptLabel"></div>
+      <div class="banner-text" id="bannerText">Welcome</div>
+    </div>
+    <div class="logo-area">
+      <img id="logoImg" src="" alt="Logo" style="display:none;" />
+    </div>
+  </header>
+
+  <!-- Translation area (~75% of remaining height) -->
+  <main class="translation-area">
+    <div class="interim-bar" id="interimBar"></div>
+    <div class="translation-scroll" id="translationScroll">
+      <div class="translation-content" id="translationContent"></div>
+    </div>
+  </main>
+
+  <!-- Bottom controls -->
+  <footer class="controls">
+    <button id="startBtn" class="btn btn-primary" onclick="toggleListening()">开始发言</button>
+    <button class="btn btn-secondary" onclick="clearTranslation()">清空</button>
+  </footer>
+
+  <script src="/static/app.js"></script>
+  <script>
+    loadDisplayConfig();
+  </script>
+</body>
+</html>

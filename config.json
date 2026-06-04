@@ -1,0 +1,10 @@
+{
+  "logo": "/uploads/logo.jpg",
+  "active_department": "陈怀达",
+  "departments": [
+    {
+      "name": "陈怀达",
+      "banner": "Welcome to CMPak"
+    }
+  ]
+}

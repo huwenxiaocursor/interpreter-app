@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>系统配置 — CMPak 同声传译</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="admin-page">
+  <div class="admin-container">
+    <h1>同声传译系统配置</h1>
+
+    <!-- Logo upload -->
+    <section class="config-section">
+      <h2>公司 Logo</h2>
+      <div class="logo-preview">
+        <img id="logoPreview" src="" alt="Logo" style="display:none;" />
+        <span id="noLogoText" class="no-logo-text">暂未上传</span>
+      </div>
+      <div class="file-upload-wrapper">
+        <input type="file" id="logoFileInput" accept="image/*" onchange="uploadLogo(this)" />
+        <label for="logoFileInput" class="btn btn-secondary btn-sm" style="cursor:pointer;">
+          选择图片上传
+        </label>
+      </div>
+    </section>
+
+    <!-- Department banners -->
+    <section class="config-section">
+      <h2>部门欢迎标语</h2>
+      <div id="deptList" class="dept-list"></div>
+      <button class="btn btn-secondary btn-sm" onclick="addDept()">＋ 新增部门</button>
+    </section>
+
+    <!-- Save -->
+    <div class="save-row">
+      <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+      <span id="saveFeedback" class="save-feedback"></span>
+    </div>
+
+    <div style="margin-top:24px; font-size:0.85rem; color:#aaa;">
+      展示屏地址：<a href="/display" target="_blank">/display</a>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    loadAdminConfig();
+  </script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+import json
+import os
+import shutil
+import tempfile
+from typing import Optional
+
+MLX_MODEL = "mlx-community/whisper-large-v3-mlx"
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from openai import OpenAI
+from pydantic import BaseModel
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+STATIC_DIR  = os.path.join(BASE_DIR, "static")
+
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+DEFAULT_CONFIG = {"logo": None, "active_department": None, "departments": []}
+
+
+def read_config() -> dict:
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return DEFAULT_CONFIG.copy()
+
+
+def write_config(cfg: dict) -> None:
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+app.mount("/static",  StaticFiles(directory=STATIC_DIR),  name="static")
+
+
+@app.get("/")
+@app.get("/display")
+async def display():
+    return FileResponse(os.path.join(STATIC_DIR, "display.html"))
+
+
+@app.get("/admin")
+async def admin():
+    return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
+
+
+@app.get("/api/config")
+async def get_config():
+    return read_config()
+
+
+class DeptItem(BaseModel):
+    name: str
+    banner: str
+
+
+class ConfigBody(BaseModel):
+    logo: Optional[str] = None
+    active_department: Optional[str] = None
+    departments: list[DeptItem] = []
+
+
+@app.post("/api/config")
+async def save_config(body: ConfigBody):
+    write_config(body.model_dump())
+    return {"status": "ok"}
+
+
+@app.post("/api/upload-logo")
+async def upload_logo(file: UploadFile = File(...)):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}:
+        raise HTTPException(400, "不支持的文件格式，请上传 PNG / JPG / GIF / WebP / SVG")
+    filename = f"logo{ext}"
+    dest = os.path.join(UPLOADS_DIR, filename)
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"path": f"/uploads/{filename}"}
+
+
+@app.post("/api/transcribe")
+async def transcribe(audio: UploadFile = File(...)):
+    import mlx_whisper
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
+        shutil.copyfileobj(audio.file, tmp)
+        tmp_path = tmp.name
+    try:
+        result = mlx_whisper.transcribe(tmp_path, path_or_hf_repo=MLX_MODEL, language="zh")
+        text = result["text"].strip()
+        return {"text": text}
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+class TranslateRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/translate")
+async def translate(req: TranslateRequest):
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    if not api_key:
+        raise HTTPException(500, "服务器未配置 DEEPSEEK_API_KEY 环境变量")
+
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+
+    def token_stream():
+        stream = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a professional simultaneous interpreter for CMPak "
+                        "(China Mobile Pakistan). Translate the Chinese speech to "
+                        "fluent, professional English. Output ONLY the translated "
+                        "English text, nothing else."
+                    ),
+                },
+                {"role": "user", "content": req.text},
+            ],
+            stream=True,
+            max_tokens=512,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+
+    return StreamingResponse(token_stream(), media_type="text/plain; charset=utf-8")
