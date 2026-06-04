@@ -1,10 +1,7 @@
 import json
 import os
 import shutil
-import tempfile
 from typing import Optional
-
-MLX_MODEL = "mlx-community/whisper-large-v3-mlx"
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -91,22 +88,6 @@ async def upload_logo(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, f)
     return {"path": f"/uploads/{filename}"}
 
-
-@app.post("/api/transcribe")
-async def transcribe(audio: UploadFile = File(...)):
-    import mlx_whisper
-    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
-        shutil.copyfileobj(audio.file, tmp)
-        tmp_path = tmp.name
-    try:
-        result = mlx_whisper.transcribe(tmp_path, path_or_hf_repo=MLX_MODEL, language="zh")
-        text = result["text"].strip()
-        return {"text": text}
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 class TranslateRequest(BaseModel):

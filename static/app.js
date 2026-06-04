@@ -23,7 +23,7 @@ let isListening  = false;
 const SR_ERROR_MSG = {
   'no-speech':           '⚠️ 未检测到语音，请靠近麦克风说话',
   'audio-capture':       '❌ 无法捕获音频，请检查麦克风',
-  'not-allowed':         '❌ 麦克风权限被拒绝，请在 Chrome 设置中允许',
+  'not-allowed':         '❌ 麦克风权限被拒绝，请在浏览器设置中允许麦克风访问',
   'network':             '❌ 网络错误，语音识别服务无法连接',
   'service-not-allowed': '❌ 语音识别服务不可用',
   'bad-grammar':         '⚠️ 识别语法错误',
@@ -47,7 +47,7 @@ function toggleListening() {
 function startListening() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    showStatus('❌ 当前浏览器不支持语音识别，请使用 Google Chrome');
+    showStatus('❌ 当前浏览器不支持语音识别，请使用 Chrome 或 Edge 浏览器');
     return;
   }
 
