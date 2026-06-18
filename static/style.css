@@ -115,18 +115,12 @@ body {
 
 /* Live interim recognition block inside scroll area */
 .interim-live {
-  font-size: 1.1rem;
-  color: #aaa;
+  font-size: 1.4rem;
+  color: #1a6fd4;
   font-style: italic;
   margin-top: 0.6em;
-  padding-left: 4px;
-  border-left: 3px solid #e0e0e0;
-  animation: blink-border 1s infinite;
-}
-
-@keyframes blink-border {
-  0%, 100% { border-left-color: #c0c8d8; }
-  50%       { border-left-color: #4a90d9; }
+  padding-left: 8px;
+  border-left: 4px solid #4a90d9;
 }
 
 /* Bottom controls */
