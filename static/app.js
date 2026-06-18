@@ -19,6 +19,7 @@ function esc(str) {
 let recognition      = null;
 let isListening      = false;
 let listeningTimer   = null;
+let noResultTimer    = null;
 
 function startListeningIndicator() {
   const frames = ['🎤 正在聆听', '🎤 正在聆听 ·', '🎤 正在聆听 ··', '🎤 正在聆听 ···'];
@@ -82,7 +83,13 @@ function startListening() {
   recognition.interimResults = !isSafari;
   recognition.maxAlternatives = 1;
 
-  recognition.onstart = () => startListeningIndicator();
+  recognition.onstart = () => {
+    startListeningIndicator();
+    clearTimeout(noResultTimer);
+    noResultTimer = setTimeout(() => {
+      if (isListening) showStatus('⚠️ Google 语音识别无响应，建议改用 Safari 浏览器');
+    }, 8000);
+  };
 
   recognition.onresult = (event) => {
     let interim = '';
@@ -91,6 +98,7 @@ function startListening() {
       if (r.isFinal) {
         const text = r[0].transcript.trim();
         if (!text) continue;
+        clearTimeout(noResultTimer);
         stopListeningIndicator();
         setInterimBlock('');
         // 立刻把中文显示出来
@@ -155,6 +163,7 @@ function stopListening() {
     recognition = null;
   }
   isListening = false;
+  clearTimeout(noResultTimer);
   stopListeningIndicator();
   setInterimBlock('');
 
