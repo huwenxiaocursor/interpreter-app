@@ -16,14 +16,8 @@ function esc(str) {
 
 // ==================== Display Page ====================
 
-let mediaRecorder  = null;
-let isListening    = false;
-let mediaStream    = null;
-let chunkTimer     = null;
-let countdownTimer = null;
-let audioChunks    = [];
-
-const CHUNK_SECONDS = 8;
+let recognition = null;
+let isListening = false;
 
 async function loadDisplayConfig() {
   await fetchConfig();
@@ -39,100 +33,68 @@ function toggleListening() {
   isListening ? stopListening() : startListening();
 }
 
-async function startListening() {
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (e) {
-    showStatus('❌ 无法获取麦克风权限：' + e.message);
+function startListening() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    showStatus('❌ 当前浏览器不支持语音识别，请使用 Chrome 或 Edge');
     return;
   }
+
+  recognition = new SR();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => showStatus('🎤 已就绪，请开始发言');
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const r = event.results[i];
+      if (r.isFinal) {
+        const text = r[0].transcript.trim();
+        if (text) { showStatus(''); translateAndAppend(text); }
+      } else {
+        interim += r[0].transcript;
+      }
+    }
+    setInterimBlock(interim);
+    if (interim) showStatus('🎤 识别中...');
+  };
+
+  recognition.onerror = (e) => {
+    const msgs = {
+      'not-allowed':   '❌ 麦克风权限被拒绝',
+      'audio-capture': '❌ 无法捕获音频，请检查麦克风',
+      'network':       '❌ 网络错误，语音识别服务无法连接',
+      'no-speech':     '⚠️ 未检测到语音',
+    };
+    showStatus(msgs[e.error] || '❌ 识别错误：' + e.error);
+    if (e.error === 'not-allowed' || e.error === 'audio-capture') stopListening();
+  };
+
+  recognition.onend = () => {
+    if (isListening) try { recognition.start(); } catch {}
+  };
+
+  recognition.start();
   isListening = true;
+
   const btn = document.getElementById('startBtn');
   btn.textContent = '停止发言';
   btn.classList.add('is-listening');
-  showStatus('🎤 已就绪，请开始发言');
-  scheduleChunk();
-}
-
-function scheduleChunk() {
-  if (!isListening) return;
-  audioChunks = [];
-
-  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-    ? 'audio/webm;codecs=opus'
-    : MediaRecorder.isTypeSupported('audio/webm')
-    ? 'audio/webm'
-    : '';
-
-  mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : {});
-
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) audioChunks.push(e.data);
-  };
-
-  mediaRecorder.onstop = async () => {
-    clearInterval(countdownTimer);
-    const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
-    console.log('[录音] blob大小:', blob.size, '字节, chunks数:', audioChunks.length);
-    if (blob.size > 100) {
-      showStatus('⏳ 识别中...');
-      await sendChunk(blob, mimeType);
-    } else {
-      showStatus('⚠️ 未录到音频 (blob=' + blob.size + 'B)，请检查麦克风');
-    }
-    if (isListening) scheduleChunk();
-  };
-
-  mediaRecorder.start();
-
-  // Countdown display
-  let remaining = CHUNK_SECONDS;
-  showStatus(`🔴 录音中 (${remaining}秒)`);
-  countdownTimer = setInterval(() => {
-    remaining--;
-    if (remaining > 0) showStatus(`🔴 录音中 (${remaining}秒)`);
-  }, 1000);
-
-  chunkTimer = setTimeout(() => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-  }, CHUNK_SECONDS * 1000);
-}
-
-async function sendChunk(blob, mimeType) {
-  console.log('[Whisper] 发送音频片段，大小:', blob.size, 'bytes，类型:', blob.type);
-  const ext  = (mimeType || '').includes('webm') ? '.webm' : '.ogg';
-  const form = new FormData();
-  form.append('audio', new File([blob], 'chunk' + ext, { type: blob.type }));
-  try {
-    const res = await fetch('/api/transcribe', { method: 'POST', body: form });
-    if (!res.ok) { showStatus('⚠️ 识别失败：' + (await res.text())); return; }
-    const { text } = await res.json();
-    console.log('[Whisper] 识别结果:', JSON.stringify(text));
-    if (text && text.trim()) {
-      showStatus('🎤 已就绪，请开始发言');
-      translateAndAppend(text.trim());
-    } else {
-      showStatus('🎤 已就绪，请开始发言');
-    }
-  } catch (e) {
-    showStatus('⚠️ 网络错误：' + e.message);
-  }
 }
 
 function stopListening() {
+  if (recognition) {
+    recognition.onend = null;
+    try { recognition.stop(); } catch {}
+    recognition = null;
+  }
   isListening = false;
-  clearTimeout(chunkTimer);
-  clearInterval(countdownTimer);
-  if (mediaRecorder) {
-    mediaRecorder.onstop = null;
-    try { mediaRecorder.stop(); } catch {}
-    mediaRecorder = null;
-  }
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(t => t.stop());
-    mediaStream = null;
-  }
   showStatus('');
+  setInterimBlock('');
 
   const btn = document.getElementById('startBtn');
   btn.textContent = '开始发言';
