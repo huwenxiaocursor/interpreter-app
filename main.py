@@ -90,6 +90,41 @@ async def upload_logo(file: UploadFile = File(...)):
 
 
 
+@app.post("/api/transcribe")
+async def transcribe_audio(audio: UploadFile = File(...)):
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(500, "服务器未配置 OPENAI_API_KEY 环境变量")
+
+    content = await audio.read()
+    if len(content) < 500:
+        return {"text": ""}
+
+    import tempfile
+    suffix = os.path.splitext(audio.filename or "chunk.webm")[1] or ".webm"
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+        client = OpenAI(api_key=api_key)
+        with open(tmp_path, "rb") as f:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=f,
+                language="zh",
+            )
+        return {"text": transcript.text}
+    except Exception as e:
+        raise HTTPException(500, f"语音识别失败：{e}")
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+
+
 class TranslateRequest(BaseModel):
     text: str
 
