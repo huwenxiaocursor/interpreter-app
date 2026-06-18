@@ -16,11 +16,14 @@ function esc(str) {
 
 // ==================== Display Page ====================
 
-let mediaRecorder = null;
-let isListening   = false;
-let mediaStream   = null;
-let chunkTimer    = null;
-let audioChunks   = [];
+let mediaRecorder  = null;
+let isListening    = false;
+let mediaStream    = null;
+let chunkTimer     = null;
+let countdownTimer = null;
+let audioChunks    = [];
+
+const CHUNK_SECONDS = 8;
 
 async function loadDisplayConfig() {
   await fetchConfig();
@@ -68,18 +71,28 @@ function scheduleChunk() {
   };
 
   mediaRecorder.onstop = async () => {
+    clearInterval(countdownTimer);
     const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
     if (blob.size > 500) {
-      showStatus('🔄 识别中...');
+      showStatus('⏳ 识别中...');
       await sendChunk(blob, mimeType);
     }
     if (isListening) scheduleChunk();
   };
 
   mediaRecorder.start();
+
+  // Countdown display
+  let remaining = CHUNK_SECONDS;
+  showStatus(`🔴 录音中 (${remaining}秒)`);
+  countdownTimer = setInterval(() => {
+    remaining--;
+    if (remaining > 0) showStatus(`🔴 录音中 (${remaining}秒)`);
+  }, 1000);
+
   chunkTimer = setTimeout(() => {
     if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-  }, 5000);
+  }, CHUNK_SECONDS * 1000);
 }
 
 async function sendChunk(blob, mimeType) {
@@ -104,6 +117,7 @@ async function sendChunk(blob, mimeType) {
 function stopListening() {
   isListening = false;
   clearTimeout(chunkTimer);
+  clearInterval(countdownTimer);
   if (mediaRecorder) {
     mediaRecorder.onstop = null;
     try { mediaRecorder.stop(); } catch {}
