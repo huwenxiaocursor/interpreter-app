@@ -73,9 +73,12 @@ function scheduleChunk() {
   mediaRecorder.onstop = async () => {
     clearInterval(countdownTimer);
     const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
-    if (blob.size > 500) {
+    console.log('[录音] blob大小:', blob.size, '字节, chunks数:', audioChunks.length);
+    if (blob.size > 100) {
       showStatus('⏳ 识别中...');
       await sendChunk(blob, mimeType);
+    } else {
+      showStatus('⚠️ 未录到音频 (blob=' + blob.size + 'B)，请检查麦克风');
     }
     if (isListening) scheduleChunk();
   };
