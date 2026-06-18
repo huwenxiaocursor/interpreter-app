@@ -281,10 +281,23 @@ body {
 
 .btn-primary.is-listening {
   background: #e53935;
+  animation: pulse-ring 1.4s ease-in-out infinite;
 }
 
 .btn-primary.is-listening:hover {
   background: #c62828;
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(229,57,53,0.55); }
+  60%  { box-shadow: 0 0 0 12px rgba(229,57,53,0); }
+  100% { box-shadow: 0 0 0 0 rgba(229,57,53,0); }
+}
+
+.interim-bar.is-listening {
+  color: #e53935;
+  font-style: normal;
+  font-weight: 500;
 }
 
 .btn-secondary {

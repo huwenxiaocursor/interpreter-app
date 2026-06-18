@@ -16,8 +16,28 @@ function esc(str) {
 
 // ==================== Display Page ====================
 
-let recognition = null;
-let isListening = false;
+let recognition      = null;
+let isListening      = false;
+let listeningTimer   = null;
+
+function startListeningIndicator() {
+  const frames = ['🎤 正在聆听', '🎤 正在聆听 ·', '🎤 正在聆听 ··', '🎤 正在聆听 ···'];
+  let i = 0;
+  clearInterval(listeningTimer);
+  document.getElementById('interimBar').classList.add('is-listening');
+  showStatus(frames[0]);
+  listeningTimer = setInterval(() => {
+    i = (i + 1) % frames.length;
+    showStatus(frames[i]);
+  }, 500);
+}
+
+function stopListeningIndicator() {
+  clearInterval(listeningTimer);
+  listeningTimer = null;
+  document.getElementById('interimBar').classList.remove('is-listening');
+  showStatus('');
+}
 
 async function loadDisplayConfig() {
   await fetchConfig();
@@ -62,7 +82,7 @@ function startListening() {
   recognition.interimResults = !isSafari;
   recognition.maxAlternatives = 1;
 
-  recognition.onstart = () => showStatus('🎤 已就绪，请开始发言');
+  recognition.onstart = () => startListeningIndicator();
 
   recognition.onresult = (event) => {
     let interim = '';
@@ -71,7 +91,7 @@ function startListening() {
       if (r.isFinal) {
         const text = r[0].transcript.trim();
         if (!text) continue;
-        showStatus('');
+        stopListeningIndicator();
         setInterimBlock('');
         // 立刻把中文显示出来
         const content   = document.getElementById('translationContent');
@@ -90,7 +110,9 @@ function startListening() {
         const para = document.createElement('p');
         content.appendChild(para);
         scrollBox.scrollTop = scrollBox.scrollHeight;
-        streamTranslation(text, para);
+        streamTranslation(text, para).then(() => {
+          if (isListening) startListeningIndicator();
+        });
       } else {
         interim += r[0].transcript;
       }
@@ -119,6 +141,7 @@ function startListening() {
 
   recognition.start();
   isListening = true;
+  startListeningIndicator();
 
   const btn = document.getElementById('startBtn');
   btn.textContent = '停止发言';
@@ -132,7 +155,7 @@ function stopListening() {
     recognition = null;
   }
   isListening = false;
-  showStatus('');
+  stopListeningIndicator();
   setInterimBlock('');
 
   const btn = document.getElementById('startBtn');
