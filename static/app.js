@@ -96,6 +96,7 @@ function scheduleChunk() {
 }
 
 async function sendChunk(blob, mimeType) {
+  console.log('[Whisper] 发送音频片段，大小:', blob.size, 'bytes，类型:', blob.type);
   const ext  = (mimeType || '').includes('webm') ? '.webm' : '.ogg';
   const form = new FormData();
   form.append('audio', new File([blob], 'chunk' + ext, { type: blob.type }));
@@ -103,6 +104,7 @@ async function sendChunk(blob, mimeType) {
     const res = await fetch('/api/transcribe', { method: 'POST', body: form });
     if (!res.ok) { showStatus('⚠️ 识别失败：' + (await res.text())); return; }
     const { text } = await res.json();
+    console.log('[Whisper] 识别结果:', JSON.stringify(text));
     if (text && text.trim()) {
       showStatus('🎤 已就绪，请开始发言');
       translateAndAppend(text.trim());
