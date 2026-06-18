@@ -54,7 +54,28 @@ function startListening() {
       const r = event.results[i];
       if (r.isFinal) {
         const text = r[0].transcript.trim();
-        if (text) { showStatus(''); translateAndAppend(text); }
+        if (text) {
+          showStatus('');
+          // 立刻把中文显示出来（复用或新建 source-text 块）
+          const content = document.getElementById('translationContent');
+          const scrollBox = document.getElementById('translationScroll');
+          let srcEl = document.getElementById('interimLive');
+          if (srcEl) {
+            srcEl.id = '';
+            srcEl.className = 'source-text';
+            srcEl.textContent = text;
+          } else {
+            srcEl = document.createElement('div');
+            srcEl.className = 'source-text';
+            srcEl.textContent = text;
+            content.appendChild(srcEl);
+          }
+          // 翻译段落紧跟其后，异步填充
+          const para = document.createElement('p');
+          content.appendChild(para);
+          scrollBox.scrollTop = scrollBox.scrollHeight;
+          streamTranslation(text, para);
+        }
       } else {
         interim += r[0].transcript;
       }
@@ -123,25 +144,10 @@ function setInterimBlock(text) {
   }
 }
 
-async function translateAndAppend(chineseText) {
+async function streamTranslation(chineseText, para) {
   const scrollBox = document.getElementById('translationScroll');
-  const content   = document.getElementById('translationContent');
-
-  // Chinese source line
-  const srcEl = document.createElement('div');
-  srcEl.className = 'source-text';
-  srcEl.textContent = chineseText;
-  content.appendChild(srcEl);
-
-  // English paragraph (streamed)
-  const para = document.createElement('p');
-  content.appendChild(para);
-  scrollBox.scrollTop = scrollBox.scrollHeight;
-
   try {
-    // 用绝对 URL 避免 Safari 对 localhost 相对路径的解析问题
-    const apiBase = window.location.origin;
-    const res = await fetch(apiBase + '/api/translate', {
+    const res = await fetch(window.location.origin + '/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: chineseText }),
@@ -151,7 +157,6 @@ async function translateAndAppend(chineseText) {
       para.style.color = '#e53935';
       return;
     }
-    // 优先流式读取（Chrome），Safari 不支持时回退到一次性获取
     if (res.body && typeof res.body.getReader === 'function') {
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
