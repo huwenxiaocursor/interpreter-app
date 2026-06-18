@@ -35,6 +35,19 @@ function toggleListening() {
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
+async function checkMicDevice() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    stream.getTracks().forEach(t => t.stop());
+    const inputs = devices.filter(d => d.kind === 'audioinput');
+    const names = inputs.map(d => d.label || '未知设备').join(' / ');
+    showStatus('🎙 当前音频输入：' + names);
+  } catch (e) {
+    showStatus('❌ 无法获取设备信息：' + e.message);
+  }
+}
+
 function startListening() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
