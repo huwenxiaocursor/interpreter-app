@@ -145,9 +145,10 @@ async def translate(req: TranslateRequest):
                     "role": "system",
                     "content": (
                         "You are a professional simultaneous interpreter for CMPak "
-                        "(China Mobile Pakistan). Translate the Chinese speech to "
-                        "fluent, professional English. Output ONLY the translated "
-                        "English text, nothing else."
+                        "(China Mobile Pakistan). The input is Chinese speech (may be "
+                        "Simplified or Traditional Chinese). Translate it to fluent, "
+                        "professional English. Output ONLY the translated English text, "
+                        "nothing else."
                     ),
                 },
                 {"role": "user", "content": req.text},
