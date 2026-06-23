@@ -1,6 +1,6 @@
-# CMPak 同声传译系统
+# Zong同声传译系统
 
-> 专为 CMPak（中国移动巴基斯坦）内部会议设计的实时中英同声传译 Web 应用。
+> 专为内部会议设计的实时中英同声传译 Web 应用。
 
 **线上地址**：https://interpreter-app-0x0c.onrender.com  
 **管理后台**：https://interpreter-app-0x0c.onrender.com/admin
